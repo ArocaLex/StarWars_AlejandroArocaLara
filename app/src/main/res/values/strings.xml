@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">PlanetStarWars</string>
+    <string name="climate_field">"Clima"</string>
+    <string name="terrain_field">Terreno</string>
+    <string name="population_field">Población</string>
+    <string name="app_dev">Alejandro Aroca Lara</string>
+    <string name="no_data">No hay datos disponibles</string>
+    <string name="about_us">Sobre nosotros</string>
+</resources>
