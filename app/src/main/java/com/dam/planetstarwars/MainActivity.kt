@@ -63,9 +63,11 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 val titulo = when (currentRoute) {
+                    Routes.DASHBOARD -> "Inicio"
                     Routes.LIST -> "Listado de Planetas"
                     Routes.ADD -> "Nuevo Planeta"
                     Routes.EDIT -> "Editar Planeta"
+                    Routes.SETTINGS -> "Ajustes"
                     Routes.ABOUT -> "Sobre Nosotros"
                     else -> "Star Wars Wiki"
                 }
@@ -78,6 +80,19 @@ class MainActivity : ComponentActivity() {
                             Text("Menú Principal", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
                             HorizontalDivider()
 
+                            NavigationDrawerItem(
+                                label = { Text("Inicio") },
+                                icon = { Icon(Icons.Default.Menu, "Ir a inicio") },
+                                selected = currentRoute == Routes.DASHBOARD,
+                                onClick = {
+                                    scope.launch {
+                                        drawerState.close()
+                                        navController.navigate(Routes.DASHBOARD) {
+                                            popUpTo(Routes.DASHBOARD) { inclusive = true }
+                                        }
+                                    }
+                                }
+                            )
 
                             NavigationDrawerItem(
                                 label = { Text("Planetas") },
@@ -86,20 +101,19 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     scope.launch {
                                         drawerState.close()
-                                        navController.navigate(Routes.LIST) {
-                                            popUpTo(Routes.LIST) { inclusive = true }
-                                        }
+                                        navController.navigate(Routes.LIST)
                                     }
                                 }
                             )
+
                             NavigationDrawerItem(
-                                label = { Text("Añadir Planeta") },
-                                icon = { Icon(Icons.Default.Add, "Item para añadir planeta") },
-                                selected = currentRoute == Routes.ADD,
+                                label = { Text("Ajustes") },
+                                icon = { Icon(Icons.Default.Menu, "Item para ajustes") },
+                                selected = currentRoute == Routes.SETTINGS,
                                 onClick = {
                                     scope.launch {
                                         drawerState.close()
-                                        navController.navigate(Routes.ADD)
+                                        navController.navigate(Routes.SETTINGS)
                                     }
                                 }
                             )

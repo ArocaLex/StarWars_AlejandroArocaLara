@@ -22,10 +22,12 @@ import com.dam.planetstarwars.ui.planetScreens.add.PlanetDetailScreen
 import kotlinx.coroutines.launch
 
 object Routes {
+    const val DASHBOARD = "DASHBOARD"
     const val LIST = "LIST"
     const val ADD = "ADD"
     const val EDIT = "EDIT"
     const val ABOUT = "ABOUTUS"
+    const val SETTINGS = "SETTINGS"
 }
 
 @Composable
@@ -40,7 +42,7 @@ fun NavHostScreen(
 
     NavHost(
         navController = navController,
-        startDestination = Routes.LIST,
+        startDestination = Routes.DASHBOARD,
         modifier = modifier,
 
         enterTransition = {
@@ -59,6 +61,13 @@ fun NavHostScreen(
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, tween(500))
         }
     ) {
+        composable(route = Routes.DASHBOARD) {
+            DashboardScreen(
+                onConfigureTopBar = onConfigureTopBar,
+                onOpenDrawer = onOpenDrawer
+            )
+        }
+
         composable(route = Routes.LIST) {
             PlanetListScreen(
                 viewModel = hiltViewModel(),
@@ -114,6 +123,13 @@ fun NavHostScreen(
             AboutUsScreen(
                 onBack = { navController.popBackStack() },
                 onConfigureTopBar = onConfigureTopBar
+            )
+        }
+
+        composable(route = Routes.SETTINGS) {
+            SettingsScreen(
+                onConfigureTopBar = onConfigureTopBar,
+                onOpenDrawer = onOpenDrawer
             )
         }
     }
