@@ -2,7 +2,20 @@
 
 Aquí voy apuntando todo lo que le voy haciendo a la app para no perderme.
 
-## [v2.1.0] -(Versión Actual)
+## [v3.0.0] - (Versión Final - Entrega Junio)
+**"Aplicación Multifuncional (Tarea 4)"**
+
+### Novedades
+* **Entidad de Películas:** Implementación completa del CRUD para la entidad `Film` utilizando Room y componentes reutilizables de UI.
+* **Navegación Global:** Navegación por Drawer completada con acceso a Inicio, Planetas, Películas, Ajustes y Sobre Nosotros.
+* **Reglas de Integridad y Validación:** Implementado `AlertDialog` al detectar intentos de guardar Planetas o Películas duplicadas.
+* **Barra de Búsqueda:** Funcionalidad de filtrado reactivo (`StateFlow`) para buscar elementos por nombre o título en tiempo real.
+* **Notificaciones:** Gestión del permiso `POST_NOTIFICATIONS` y notificaciones en la barra de estado al guardar un elemento con éxito.
+* **Personalización:** Modificado el `ic_launcher` por un icono personalizado y ajustado el `app_name` a "Star Wars App".
+
+---
+
+## [v2.1.0]
 **"Arreglo bugs y crashes de Hilt y Room"**
 
 
