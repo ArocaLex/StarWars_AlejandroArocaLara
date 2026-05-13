@@ -11,16 +11,18 @@ import com.dam.planetstarwars.data.model.Terrain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.dam.planetstarwars.data.model.Film
 
 @Database(
-    version = 1,
-    entities = [Planet::class],
+    version = 2,
+    entities = [Planet::class, Film::class],
     exportSchema = false
 )
 abstract class StarWarsDatabase : RoomDatabase() {
 
 
     abstract fun getPlanetDao(): PlanetDAO
+    abstract fun getFilmDao(): FilmDAO
 
 
     companion object {
@@ -55,6 +57,7 @@ abstract class StarWarsDatabase : RoomDatabase() {
 
         suspend fun prepopulateDatabase(database: StarWarsDatabase) {
             val planetDao = database.getPlanetDao()
+            val filmDao = database.getFilmDao()
 
             // 1. Tatooine
             planetDao.insert(
@@ -132,6 +135,27 @@ abstract class StarWarsDatabase : RoomDatabase() {
                     diameter = "8900",
                     created = "21-05-1980",
                     isColonized = false
+                )
+            )
+
+            // Populate some initial films
+            filmDao.insert(
+                Film(
+                    title = "A New Hope",
+                    episodeId = 4,
+                    director = "George Lucas",
+                    producer = "Gary Kurtz, Rick McCallum",
+                    releaseDate = "1977-05-25"
+                )
+            )
+
+            filmDao.insert(
+                Film(
+                    title = "The Empire Strikes Back",
+                    episodeId = 5,
+                    director = "Irvin Kershner",
+                    producer = "Gary Kurtz, Rick McCallum",
+                    releaseDate = "1980-05-17"
                 )
             )
         }

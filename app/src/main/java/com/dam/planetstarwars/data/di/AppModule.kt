@@ -3,6 +3,7 @@ package com.dam.planetstarwars.data.di
 import android.content.Context
 import android.content.res.Resources
 import com.dam.planetstarwars.data.dao.PlanetDAO
+import com.dam.planetstarwars.data.dao.FilmDAO
 import com.dam.planetstarwars.data.dao.StarWarsDatabase
 import dagger.Module
 import dagger.Provides
@@ -34,4 +35,9 @@ object AppModule {
         return db.getPlanetDao()
     }
 
+    @Provides
+    @Singleton
+    fun provideFilmDao(db: StarWarsDatabase): FilmDAO {
+        return db.getFilmDao()
+    }
 }
