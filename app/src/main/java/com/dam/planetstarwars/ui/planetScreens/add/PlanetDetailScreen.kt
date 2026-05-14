@@ -1,6 +1,5 @@
 package com.dam.planetstarwars.ui.planetScreens.add
 
-
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,26 +13,29 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.dam.liststarwars.ui.components.PlanetTextField
-import com.dam.planetstarwars.R
+import com.dam.planetstarwars.ui.components.PlanetTextField
 import com.dam.planetstarwars.data.model.Climate
 import com.dam.planetstarwars.data.model.Planet
 import com.dam.planetstarwars.data.model.Terrain
@@ -57,24 +59,23 @@ fun PlanetDetailScreen(
     onConfigureTopBar: (BaseTopAppBarState) -> Unit,
     onBack: () -> Unit
 ) {
-
     val context = LocalContext.current
     val notificationHandler = remember { NotificationHandler(context) }
     val scope = rememberCoroutineScope()
 
+    var showDuplicateDialog by remember { mutableStateOf(false) }
+    var duplicatePlanetName by remember { mutableStateOf("") }
+
     val requestNotificationPermissionThenNotify = rememberPermissionsLauncher(
         permissions = listOf(AppPermissions.Notifications),
-
         onAllGranted = {
-
             notificationHandler.showSimpleNotification(
                 contentTitle = "Planeta guardado",
                 contentText = "Se ha procesado ${viewmodel.planetState.name}"
             )
-            onBack() // Usamos el onBack que recibimos por parámetro
+            onBack()
         },
         onDenied = {
-            // Si deniega: Avisamos y volvemos atrás de todas formas (o lo que prefieras)
             onShowMessage("Permiso de notificaciones denegado, pero se guardó el planeta.")
             onBack()
         }
@@ -82,25 +83,26 @@ fun PlanetDetailScreen(
 
     val saveAndNotify = {
         scope.launch {
-
-            val error = viewmodel.savePlanet()
-
-            if (error == null) {
-
-                val successMsg = if (viewmodel.editMode) "Planeta actualizado" else "Planeta creado"
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    requestNotificationPermissionThenNotify()
-                } else {
-                    notificationHandler.showSimpleNotification("Éxito", successMsg)
-                    onBack()
+            when (val result = viewmodel.savePlanet()) {
+                is PlanetSaveResult.Success -> {
+                    val successMsg = if (viewmodel.editMode) "Planeta actualizado" else "Planeta creado"
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        requestNotificationPermissionThenNotify()
+                    } else {
+                        notificationHandler.showSimpleNotification("Éxito", successMsg)
+                        onBack()
+                    }
                 }
-
-            } else {
-                onShowMessage(error)
+                is PlanetSaveResult.FieldError -> { /* errors shown inline */ }
+                is PlanetSaveResult.Duplicate -> {
+                    duplicatePlanetName = result.name
+                    showDuplicateDialog = true
+                }
+                is PlanetSaveResult.UnknownError -> onShowMessage(result.message)
             }
         }
     }
+
     val backIconPainter = rememberVectorPainter(Icons.AutoMirrored.Filled.ArrowBack)
     val screenTitle = if (viewmodel.editMode) "Editar Planeta" else "Nuevo Planeta"
 
@@ -122,7 +124,17 @@ fun PlanetDetailScreen(
         )
     }
 
-    // Actualizar las acciones para usar saveAndNotify
+    if (showDuplicateDialog) {
+        AlertDialog(
+            onDismissRequest = { showDuplicateDialog = false },
+            title = { Text("Planeta duplicado") },
+            text = { Text("El planeta '$duplicatePlanetName' ya existe en la base de datos. Por favor, utiliza otro nombre.") },
+            confirmButton = {
+                TextButton(onClick = { showDuplicateDialog = false }) { Text("Aceptar") }
+            }
+        )
+    }
+
     val actions = PlanetAddActions(
         onNameChange = { viewmodel.onNameChange(it) },
         onClimateChange = { viewmodel.onClimateChange(it) },
@@ -134,9 +146,7 @@ fun PlanetDetailScreen(
         onOrbitalChange = { viewmodel.onOrbitalChange(it) },
         onCreatedChange = { viewmodel.onCreatedChange(it) },
         onColonizedChange = { viewmodel.onColonizedChange(it) },
-        onSave = {
-            saveAndNotify()
-        },
+        onSave = { saveAndNotify() },
     )
 
     CompositionLocalProvider(LocalOutlinedTextFieldStyle provides OutlinedTextFieldStyle) {
@@ -144,20 +154,34 @@ fun PlanetDetailScreen(
             modifier = modifier,
             planet = viewmodel.planetState,
             isEditMode = viewmodel.editMode,
-            actions = actions
+            actions = actions,
+            nameError = viewmodel.nameError,
+            rotationError = viewmodel.rotationError,
+            orbitalError = viewmodel.orbitalError,
+            climateError = viewmodel.climateError,
+            terrainError = viewmodel.terrainError,
+            diameterError = viewmodel.diameterError,
+            createdError = viewmodel.createdError
         )
     }
 }
+
 @Composable
 fun PlanetAddScreenContent(
     modifier: Modifier = Modifier,
     planet: Planet,
     isEditMode: Boolean,
-    actions: PlanetAddActions
+    actions: PlanetAddActions,
+    nameError: String? = null,
+    rotationError: String? = null,
+    orbitalError: String? = null,
+    climateError: String? = null,
+    terrainError: String? = null,
+    diameterError: String? = null,
+    createdError: String? = null
 ) {
     val listState = rememberLazyListState()
 
-    // Convertimos los Enums a una lista de Strings para el desplegable
     val climateOptions = remember { Climate.entries.map { it.textoInterfaz } }
     val terrainOptions = remember { Terrain.entries.map { it.textoInterfaz } }
 
@@ -182,39 +206,73 @@ fun PlanetAddScreenContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            // Campos de texto normal
-            item { PlanetTextField("Nombre", planet.name, actions.onNameChange) }
-            item { PlanetTextField("Periodo Rotación", planet.rotationPeriod, actions.onRotationChange) }
-            item { PlanetTextField("Periodo Orbital", planet.orbitalPeriod, actions.onOrbitalChange) }
-
-            // --- AQUÍ SUSTITUIMOS LOS TEXTFIELDS POR DROPDOWNS ---
-
-            // Selector de Clima
+            item {
+                PlanetTextField(
+                    labelText = "Nombre",
+                    value = planet.name,
+                    onValueChange = actions.onNameChange,
+                    isError = nameError != null,
+                    errorMessage = nameError
+                )
+            }
+            item {
+                PlanetTextField(
+                    labelText = "Periodo Rotación",
+                    value = planet.rotationPeriod,
+                    onValueChange = actions.onRotationChange,
+                    isError = rotationError != null,
+                    errorMessage = rotationError
+                )
+            }
+            item {
+                PlanetTextField(
+                    labelText = "Periodo Orbital",
+                    value = planet.orbitalPeriod,
+                    onValueChange = actions.onOrbitalChange,
+                    isError = orbitalError != null,
+                    errorMessage = orbitalError
+                )
+            }
             item {
                 PlanetDropdownSelector(
                     label = "Clima",
                     options = climateOptions,
                     selectedOption = planet.climate,
-                    onOptionSelected = actions.onClimateChange
+                    onOptionSelected = actions.onClimateChange,
+                    isError = climateError != null,
+                    errorMessage = climateError
                 )
             }
-
-            // Selector de Terreno
             item {
                 PlanetDropdownSelector(
                     label = "Terreno",
                     options = terrainOptions,
                     selectedOption = planet.terrain,
-                    onOptionSelected = actions.onTerrainChange
+                    onOptionSelected = actions.onTerrainChange,
+                    isError = terrainError != null,
+                    errorMessage = terrainError
                 )
             }
-            // ----------------------------------------------------
-
-            item { PlanetTextField("Diámetro", planet.diameter, actions.onDiameterChange) }
+            item {
+                PlanetTextField(
+                    labelText = "Diámetro",
+                    value = planet.diameter,
+                    onValueChange = actions.onDiameterChange,
+                    isError = diameterError != null,
+                    errorMessage = diameterError
+                )
+            }
             item { PlanetTextField("Gravedad", planet.gravity, actions.onGravityChange) }
             item { PlanetTextField("Población", planet.population, actions.onPopulationChange) }
-            item { PlanetTextField("Fecha Creación (DD-MM-YYYY)", planet.created, actions.onCreatedChange) }
-
+            item {
+                PlanetTextField(
+                    labelText = "Fecha Creación (DD-MM-YYYY)",
+                    value = planet.created,
+                    onValueChange = actions.onCreatedChange,
+                    isError = createdError != null,
+                    errorMessage = createdError
+                )
+            }
             item {
                 Row(
                     modifier = Modifier
@@ -246,6 +304,7 @@ fun PlanetAddScreenContent(
         }
     }
 }
+
 @Preview(
     name = "Formulario Accesible",
     group = "Pantallas",
@@ -269,15 +328,11 @@ fun PlanetFormPreviewAdvanced() {
         isColonized = false
     )
 
-
-    val accionesEjemplo = PlanetAddActions({},{},{},{},{},{},{},{},{},{},{})
-
-
     PlanetStarWarsTheme {
         PlanetAddScreenContent(
             planet = planetaPrueba,
             isEditMode = true,
-            actions = accionesEjemplo
+            actions = PlanetAddActions({},{},{},{},{},{},{},{},{},{},{})
         )
     }
 }

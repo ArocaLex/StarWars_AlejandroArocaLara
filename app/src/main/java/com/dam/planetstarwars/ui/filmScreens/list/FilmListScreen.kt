@@ -1,29 +1,19 @@
 package com.dam.planetstarwars.ui.filmScreens.list
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,7 +21,11 @@ import com.dam.planetstarwars.data.model.Film
 import com.dam.planetstarwars.ui.components.FilmItem
 import com.dam.planetstarwars.ui.components.topAppBar.Action
 import com.dam.planetstarwars.ui.components.topAppBar.BaseTopAppBarState
+import com.dam.planetstarwars.ui.theme.PlanetStarWarsTheme
 
+/**
+ * Eventos UI desacoplados para la lista de películas
+ */
 data class FilmListEvents(
     val onDelete: (Film) -> Unit,
     val onEdit: (Film) -> Unit,
@@ -54,7 +48,7 @@ fun FilmListScreen(
     LaunchedEffect(Unit) {
         onConfigureTopBar(
             BaseTopAppBarState(
-                title = "Películas de Star Wars",
+                title = "Lista de Películas",
                 iconUpAction = menuIconPainter,
                 upAction = { onOpenDrawer() },
                 actions = listOf(
@@ -74,6 +68,7 @@ fun FilmListScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
+        // Buscador de películas
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { viewModel.onSearchQueryChange(it) },
@@ -81,42 +76,49 @@ fun FilmListScreen(
                 .fillMaxWidth()
                 .padding(16.dp),
             label = { Text("Buscar película") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") }
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+            singleLine = true
         )
 
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             when (val currentState = state) {
-        is FilmListState.Loading -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                is FilmListState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                is FilmListState.Empty -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No hay películas disponibles. ¡Añade una!")
+                    }
+                }
+                is FilmListState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Error: ${currentState.message}",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                is FilmListState.Success -> {
+                    FilmListContent(
+                        list = currentState.films,
+                        events = FilmListEvents(
+                            onDelete = { film -> viewModel.deleteFilm(film) },
+                            onAdd = onAddFilm,
+                            onEdit = onEditFilm,
+                            onShowMessage = onShowSnackbar
+                        )
+                    )
+                }
             }
-        }
-        is FilmListState.Empty -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No hay películas disponibles. ¡Añade una!")
-            }
-        }
-        is FilmListState.Error -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "Error: ${currentState.message}", color = MaterialTheme.colorScheme.error)
-            }
-        }
-        is FilmListState.Success -> {
-            FilmListContent(
-                modifier = modifier,
-                list = currentState.films,
-                events = FilmListEvents(
-                    onDelete = { film -> viewModel.deleteFilm(film) },
-                    onAdd = onAddFilm,
-                    onEdit = onEditFilm,
-                    onShowMessage = onShowSnackbar
-                )
-            )
         }
     }
 }
-}
 
+/**
+ * Contenido de la lista de películas
+ */
 @Composable
 fun FilmListContent(
     modifier: Modifier = Modifier,
@@ -130,7 +132,7 @@ fun FilmListContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(items = list) { film ->
+        items(items = list, key = { it.filmId }) { film ->
             FilmItem(
                 film = film,
                 onEdit = { events.onEdit(film) },
@@ -139,6 +141,7 @@ fun FilmListContent(
         }
     }
 
+    // Diálogo de confirmación para eliminar
     if (filmToDelete != null) {
         AlertDialog(
             onDismissRequest = { filmToDelete = null },
@@ -159,5 +162,28 @@ fun FilmListContent(
                 }
             }
         )
+    }
+}
+
+@Preview(
+    name = "Lista Películas: Oscuro",
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true
+)
+@Composable
+fun FilmListScreenPreview() {
+    val filmsEjemplo = listOf(
+        Film(filmId = 1, title = "A New Hope", episodeId = 4, director = "George Lucas", producer = "Gary Kurtz", releaseDate = "1977-05-25"),
+        Film(filmId = 2, title = "The Empire Strikes Back", episodeId = 5, director = "Irvin Kershner", producer = "Gary Kurtz", releaseDate = "1980-05-17")
+    )
+
+    PlanetStarWarsTheme {
+        Surface {
+            FilmListContent(
+                list = filmsEjemplo,
+                events = FilmListEvents({}, {}, {}, {})
+            )
+        }
     }
 }

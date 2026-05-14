@@ -12,18 +12,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.dam.planetstarwars.data.model.Film
+import com.dam.planetstarwars.data.model.FilmPlanetCrossRef
 
 @Database(
-    version = 2,
-    entities = [Planet::class, Film::class],
+    version = 3,
+    entities = [Planet::class, Film::class, FilmPlanetCrossRef::class],
     exportSchema = false
 )
 abstract class StarWarsDatabase : RoomDatabase() {
 
-
     abstract fun getPlanetDao(): PlanetDAO
     abstract fun getFilmDao(): FilmDAO
-
 
     companion object {
         @Volatile
@@ -35,32 +34,33 @@ abstract class StarWarsDatabase : RoomDatabase() {
                     context.applicationContext,
                     StarWarsDatabase::class.java,
                     "starwars_database.db"
-                ).fallbackToDestructiveMigration().addCallback(StarWarsDatabaseCallback()).build()
+                )
+                .fallbackToDestructiveMigration()
+                .addCallback(object : Callback() {
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        // Al abrir la BD, comprobamos si está vacía para prepoblar
+                        INSTANCE?.let { database ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                if (database.getPlanetDao().count() == 0) {
+                                    prepopulateDatabase(database)
+                                }
+                            }
+                        }
+                    }
+                })
+                .build()
                 INSTANCE = instance
                 instance
             }
         }
 
-        private class StarWarsDatabaseCallback : Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                super.onCreate(db)
-
-                INSTANCE?.let { database ->
-                    // Usamos un Scope IO para operaciones de base de datos
-                    // Esto reemplaza al Executor + runBlocking
-                    CoroutineScope(Dispatchers.IO).launch {
-                        prepopulateDatabase(database)
-                    }
-                }
-            }
-        }
-
-        suspend fun prepopulateDatabase(database: StarWarsDatabase) {
+        private suspend fun prepopulateDatabase(database: StarWarsDatabase) {
             val planetDao = database.getPlanetDao()
             val filmDao = database.getFilmDao()
 
-            // 1. Tatooine
-            planetDao.insert(
+            // 1. Insertamos Planetas
+            val tatooineId = planetDao.insert(
                 Planet(
                     name = "Tatooine",
                     rotationPeriod = "23",
@@ -75,8 +75,7 @@ abstract class StarWarsDatabase : RoomDatabase() {
                 )
             )
 
-            // 2. Alderaan
-            planetDao.insert(
+            val alderaanId = planetDao.insert(
                 Planet(
                     name = "Alderaan",
                     rotationPeriod = "24",
@@ -91,73 +90,41 @@ abstract class StarWarsDatabase : RoomDatabase() {
                 )
             )
 
-            planetDao.insert(
-                Planet(
-                    name = "Yavin IV",
-                    rotationPeriod = "24",
-                    orbitalPeriod = "4818",
-                    climate = "${Climate.TEMPERATE.textoInterfaz}, ${Climate.TROPICAL.textoInterfaz}",
-                    terrain = "${Terrain.SWAMP.textoInterfaz}, ${Terrain.GRASSLANDS.textoInterfaz}",
-                    population = "1000",
-                    gravity = "1 standard",
-                    diameter = "10200",
-                    created = "25-05-1977",
-                    isColonized = false
-                )
-            )
-
-
-            planetDao.insert(
-                Planet(
-                    name = "Hoth",
-                    rotationPeriod = "23",
-                    orbitalPeriod = "549",
-                    climate = Climate.FROZEN.textoInterfaz,
-                    terrain = "${Terrain.TUNDRA.textoInterfaz}, ${Terrain.ICE_CAVES.textoInterfaz}",
-                    population = "unknown",
-                    gravity = "1.1 standard",
-                    diameter = "7200",
-                    created = "21-05-1980",
-                    isColonized = false
-                )
-            )
-
-
-            planetDao.insert(
-                Planet(
-                    name = "Dagobah",
-                    rotationPeriod = "23",
-                    orbitalPeriod = "341",
-                    climate = Climate.MURKY.textoInterfaz,
-                    terrain = Terrain.SWAMP.textoInterfaz,
-                    population = "unknown",
-                    gravity = "N/A",
-                    diameter = "8900",
-                    created = "21-05-1980",
-                    isColonized = false
-                )
-            )
-
-            // Populate some initial films
-            filmDao.insert(
+            val aNewHopeId = filmDao.insert(
                 Film(
                     title = "A New Hope",
                     episodeId = 4,
                     director = "George Lucas",
-                    producer = "Gary Kurtz, Rick McCallum",
+                    producer = "Gary Kurtz",
                     releaseDate = "1977-05-25"
                 )
             )
 
-            filmDao.insert(
+            val phantomMenaceId = filmDao.insert(
                 Film(
-                    title = "The Empire Strikes Back",
-                    episodeId = 5,
-                    director = "Irvin Kershner",
-                    producer = "Gary Kurtz, Rick McCallum",
-                    releaseDate = "1980-05-17"
+                    title = "The Phantom Menace",
+                    episodeId = 1,
+                    director = "George Lucas",
+                    producer = "Rick McCallum",
+                    releaseDate = "1999-05-19"
                 )
             )
+
+            val revengeOfSithId = filmDao.insert(
+                Film(
+                    title = "Revenge of the Sith",
+                    episodeId = 3,
+                    director = "George Lucas",
+                    producer = "Rick McCallum",
+                    releaseDate = "2005-05-19"
+                )
+            )
+
+            // Relaciones N:M: Tatooine aparece en los 3 episodios, Alderaan en Ep. IV
+            filmDao.insertCrossRef(FilmPlanetCrossRef(filmId = aNewHopeId, planetId = tatooineId))
+            filmDao.insertCrossRef(FilmPlanetCrossRef(filmId = aNewHopeId, planetId = alderaanId))
+            filmDao.insertCrossRef(FilmPlanetCrossRef(filmId = phantomMenaceId, planetId = tatooineId))
+            filmDao.insertCrossRef(FilmPlanetCrossRef(filmId = revengeOfSithId, planetId = tatooineId))
         }
     }
 }

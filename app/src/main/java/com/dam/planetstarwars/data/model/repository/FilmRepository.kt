@@ -2,72 +2,33 @@ package com.dam.planetstarwars.data.model.repository
 
 import com.dam.planetstarwars.data.dao.FilmDAO
 import com.dam.planetstarwars.data.model.Film
-import com.dam.planetstarwars.network.BaseResult
-import jakarta.inject.Inject
-import jakarta.inject.Singleton
+import com.dam.planetstarwars.data.model.FilmPlanetCrossRef
+import com.dam.planetstarwars.data.model.FilmWithPlanets
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Singleton
 class FilmRepository @Inject constructor(
-    private val filmDao: FilmDAO
+    private val filmDAO: FilmDAO
 ) {
-    fun getData(): Flow<List<Film>> = filmDao.getAllFilms()
+    fun getData(): Flow<List<Film>> = filmDAO.getAllFilms()
 
-    private fun validateFilm(film: Film): String? {
-        if (film.title.isBlank() || film.director.isBlank())
-            return "Título y director son obligatorios"
-        
-        if (film.title.length < 3)
-            return "El título debe tener al menos 3 caracteres"
-            
-        return null
-    }
+    suspend fun getFilmById(id: Long): Film? = filmDAO.getFilmById(id)
 
-    suspend fun save(film: Film): BaseResult<Film> {
-        val validationError = validateFilm(film)
-        if (validationError != null) return BaseResult.Error(Exception(validationError))
+    fun getFilmsByPlanet(planetId: Long): Flow<List<Film>> = filmDAO.getFilmsByPlanet(planetId)
 
-        return try {
-            val count = filmDao.exists(film.title)
-            if (count == 0) {
-                filmDao.insert(film)
-                BaseResult.Success(film)
-            } else {
-                BaseResult.Error(Exception("Error: La película ya existe"))
-            }
-        } catch (e: Exception) {
-            BaseResult.Error(e)
-        }
-    }
+    fun getFilmWithPlanetsById(filmId: Long): Flow<FilmWithPlanets> = filmDAO.getFilmWithPlanetsById(filmId)
 
-    suspend fun delete(film: Film): BaseResult<Film> {
-        return try {
-            val count = filmDao.exists(film.title)
-            if (count > 0) {
-                filmDao.delete(film)
-                BaseResult.Success(film)
-            } else {
-                BaseResult.Error(Exception("No existe la película a eliminar"))
-            }
-        } catch (e: Exception) {
-            BaseResult.Error(e)
-        }
-    }
+    suspend fun insert(film: Film): Long = filmDAO.insert(film)
 
-    suspend fun update(film: Film): BaseResult<Film> {
-        val validationError = validateFilm(film)
-        if (validationError != null) return BaseResult.Error(Exception(validationError))
+    suspend fun update(film: Film) = filmDAO.update(film)
 
-        return try {
-            val count = filmDao.exists(film.title)
-            if (count > 0) {
-                filmDao.update(film)
-                BaseResult.Success(film)
-            } else {
-                BaseResult.Error(Exception("No se puede actualizar: La película no existe"))
-            }
-        } catch (e: Exception) {
-            BaseResult.Error(e)
-        }
-    }
+    suspend fun delete(film: Film) = filmDAO.delete(film)
+
+    suspend fun exists(title: String): Boolean = filmDAO.exists(title) > 0
+
+    suspend fun insertCrossRef(crossRef: FilmPlanetCrossRef) = filmDAO.insertCrossRef(crossRef)
+
+    suspend fun deleteCrossRef(crossRef: FilmPlanetCrossRef) = filmDAO.deleteCrossRef(crossRef)
 }

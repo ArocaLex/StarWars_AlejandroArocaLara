@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.dam.planetstarwars.ui.components.topAppBar.BaseTopAppBar
 import com.dam.planetstarwars.ui.components.topAppBar.BaseTopAppBarState
 import com.dam.planetstarwars.ui.home.NavHostScreen
 import com.dam.planetstarwars.ui.home.Routes
@@ -62,16 +63,6 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                val titulo = when (currentRoute) {
-                    Routes.DASHBOARD -> "Inicio"
-                    Routes.LIST -> "Listado de Planetas"
-                    Routes.ADD -> "Nuevo Planeta"
-                    Routes.EDIT -> "Editar Planeta"
-                    Routes.SETTINGS -> "Ajustes"
-                    Routes.ABOUT -> "Sobre Nosotros"
-                    else -> "Star Wars Wiki"
-                }
-
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,
@@ -96,12 +87,24 @@ class MainActivity : ComponentActivity() {
 
                             NavigationDrawerItem(
                                 label = { Text("Planetas") },
-                                icon = { Icon(Icons.Default.MoreVert, "Item para desplegar listado") },
+                                icon = { Icon(Icons.Default.MoreVert, "Listado de planetas") },
                                 selected = currentRoute == Routes.LIST,
                                 onClick = {
                                     scope.launch {
                                         drawerState.close()
                                         navController.navigate(Routes.LIST)
+                                    }
+                                }
+                            )
+
+                            NavigationDrawerItem(
+                                label = { Text("Películas") },
+                                icon = { Icon(Icons.Default.Info, "Listado de películas") },
+                                selected = currentRoute == Routes.FILM_LIST,
+                                onClick = {
+                                    scope.launch {
+                                        drawerState.close()
+                                        navController.navigate(Routes.FILM_LIST)
                                     }
                                 }
                             )
@@ -134,27 +137,25 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Scaffold(
                         topBar = {
-                            TopAppBar(
-                                title = { Text(titulo) },
-                                navigationIcon = {
-                                    IconButton(onClick = {
-                                        scope.launch { if (drawerState.isClosed) drawerState.open() else drawerState.close() }
-                                    }) {
-                                        Icon(Icons.Default.Menu, contentDescription = "Menú")
-                                    }
-                                },
-
-                            )
+                            BaseTopAppBar(state = topBarState)
                         },
                         floatingActionButton = {
-                            if (currentRoute == Routes.LIST) {
-                                FloatingActionButton(
+                            when (currentRoute) {
+                                Routes.LIST -> FloatingActionButton(
                                     onClick = { navController.navigate(Routes.ADD) },
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary
                                 ) {
                                     Icon(imageVector = Icons.Default.Add, contentDescription = "Añadir Planeta")
                                 }
+                                Routes.FILM_LIST -> FloatingActionButton(
+                                    onClick = { navController.navigate(Routes.FILM_ADD) },
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = "Añadir Película")
+                                }
+                                else -> {}
                             }
                         },
                         snackbarHost = { SnackbarHost(snackbarHostState) }

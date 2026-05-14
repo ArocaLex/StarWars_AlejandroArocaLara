@@ -5,12 +5,11 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.parcelize.Parcelize
 
-
-@Entity(tableName = "Planets")
+@Entity(tableName = "planets")
 @Parcelize
 data class Planet(
     @PrimaryKey(autoGenerate = true)
-    val planetId: Int = 0,
+    val planetId: Long = 0,
     val name: String,
     val rotationPeriod: String,
     val orbitalPeriod: String,

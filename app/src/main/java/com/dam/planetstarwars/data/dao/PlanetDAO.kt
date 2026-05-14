@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 interface PlanetDAO {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(planet: Planet)
+    suspend fun insert(planet: Planet): Long
 
     @Delete
     suspend fun delete(planet: Planet)
@@ -25,9 +25,11 @@ interface PlanetDAO {
     fun getAllPlanet(): Flow<List<Planet>>
 
     @Query("SELECT * FROM planets WHERE planetId = :id")
-    suspend fun getPlanetById(id: Int): Planet?
+    suspend fun getPlanetById(id: Long): Planet?
 
     @Query("SELECT COUNT(*) FROM planets WHERE name = :name")
     suspend fun exists(name: String): Int
 
+    @Query("SELECT COUNT(*) FROM planets")
+    suspend fun count(): Int
 }

@@ -4,8 +4,8 @@ package com.dam.planetstarwars.data.model.repository
 import com.dam.planetstarwars.data.dao.PlanetDAO
 import com.dam.planetstarwars.data.model.Planet
 import com.dam.planetstarwars.network.BaseResult
-import jakarta.inject.Inject
-import jakarta.inject.Singleton
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 
 @Singleton

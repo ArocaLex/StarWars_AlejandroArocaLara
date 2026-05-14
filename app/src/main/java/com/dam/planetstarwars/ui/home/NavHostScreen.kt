@@ -15,15 +15,21 @@ import com.dam.planetstarwars.ui.components.topAppBar.BaseTopAppBarState
 import com.dam.planetstarwars.ui.planetScreens.AboutUsScreen
 import com.dam.planetstarwars.ui.planetScreens.add.PlanetModificationViewModel
 import com.dam.planetstarwars.ui.planetScreens.list.PlanetListScreen
+import com.dam.planetstarwars.data.model.Film
 import com.dam.planetstarwars.data.model.Planet
 import com.dam.planetstarwars.ui.planetScreens.add.PlanetDetailScreen
-
+import com.dam.planetstarwars.ui.filmScreens.add.FilmModificationScreen
+import com.dam.planetstarwars.ui.filmScreens.add.FilmModificationViewModel
+import com.dam.planetstarwars.ui.filmScreens.list.FilmListScreen
 
 import kotlinx.coroutines.launch
 
 object Routes {
     const val DASHBOARD = "DASHBOARD"
     const val LIST = "LIST"
+    const val FILM_LIST = "FILM_LIST"
+    const val FILM_ADD = "FILM_ADD"
+    const val FILM_EDIT = "FILM_EDIT"
     const val ADD = "ADD"
     const val EDIT = "EDIT"
     const val ABOUT = "ABOUTUS"
@@ -83,6 +89,42 @@ fun NavHostScreen(
             )
         }
 
+        composable(route = Routes.FILM_LIST) {
+            FilmListScreen(
+                viewModel = hiltViewModel(),
+                onAddFilm = { navController.navigate(Routes.FILM_ADD) },
+                onEditFilm = { film ->
+                    navController.currentBackStackEntry?.savedStateHandle?.set("film", film)
+                    navController.navigate(Routes.FILM_EDIT)
+                },
+                onShowSnackbar = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } },
+                onConfigureTopBar = onConfigureTopBar,
+                onOpenDrawer = onOpenDrawer
+            )
+        }
+
+        composable(route = Routes.FILM_ADD) {
+            val viewModel = hiltViewModel<FilmModificationViewModel>()
+            LaunchedEffect(Unit) { viewModel.setFilm(null) }
+            FilmModificationScreen(
+                viewModel = viewModel,
+                onConfigureTopBar = onConfigureTopBar,
+                onShowMessage = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Routes.FILM_EDIT) {
+            val film = navController.previousBackStackEntry?.savedStateHandle?.get<Film>("film")
+            val viewModel = hiltViewModel<FilmModificationViewModel>()
+            LaunchedEffect(film) { viewModel.setFilm(film) }
+            FilmModificationScreen(
+                viewModel = viewModel,
+                onConfigureTopBar = onConfigureTopBar,
+                onShowMessage = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } },
+                onBack = { navController.popBackStack() }
+            )
+        }
 
         composable(route = Routes.ADD) {
             val viewModel = hiltViewModel<PlanetModificationViewModel>()

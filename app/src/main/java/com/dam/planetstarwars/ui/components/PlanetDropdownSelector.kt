@@ -23,7 +23,9 @@ fun PlanetDropdownSelector(
     label: String,
     options: List<String>,
     selectedOption: String,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String) -> Unit,
+    isError: Boolean = false,
+    errorMessage: String? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -39,12 +41,14 @@ fun PlanetDropdownSelector(
                 .fillMaxWidth()
                 .menuAnchor()
                 .clickable{expanded = true},
-            readOnly = true, // Para que no salga el teclado
+            readOnly = true,
             value = selectedOption,
             onValueChange = {},
             label = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            isError = isError,
+            supportingText = if (isError && errorMessage != null) { { Text(errorMessage) } } else null
         )
 
         ExposedDropdownMenu(
