@@ -1,21 +1,25 @@
 package com.dam.planetstarwars.ui.planetScreens.list
 
 import android.content.res.Configuration
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
-
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,22 +37,16 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dam.planetstarwars.data.model.Planet
 import com.dam.planetstarwars.ui.components.PlanetItem
-
 import com.dam.planetstarwars.ui.components.topAppBar.Action
 import com.dam.planetstarwars.ui.components.topAppBar.BaseTopAppBarState
 import com.dam.planetstarwars.ui.theme.PlanetStarWarsTheme
 
-
-/**
- * Eventos UI desacoplados
- */
 data class PlanetListEvents(
     val onDelete: (Planet) -> Unit,
     val onEdit: (Planet) -> Unit,
     val onAdd: () -> Unit,
     val onShowMessage: (String) -> Unit,
-
-    )
+)
 
 @Composable
 fun PlanetListScreen(
@@ -59,10 +57,8 @@ fun PlanetListScreen(
     onShowSnackbar: (String) -> Unit,
     onAboutUs: () -> Unit,
     onConfigureTopBar: (BaseTopAppBarState) -> Unit,
-    onOpenDrawer:()-> Unit
+    onOpenDrawer: () -> Unit
 ) {
-
-
     val menuIconPainter = rememberVectorPainter(Icons.Default.Menu)
 
     LaunchedEffect(Unit) {
@@ -70,83 +66,79 @@ fun PlanetListScreen(
             BaseTopAppBarState(
                 title = "Lista de Planetas",
                 iconUpAction = menuIconPainter,
-                upAction = {},
+                upAction = onOpenDrawer,
                 actions = listOf(
                     Action.ActionImageVector(
                         name = "Añadir",
                         icon = Icons.Default.Add,
                         contentDescription = "Boton para añadir planeta",
-                        onClick = {onAddPlanet()},
+                        onClick = { onAddPlanet() },
                         isVisible = true
                     ),
                     Action.ActionImageVector(
                         icon = Icons.Default.MoreVert,
                         name = "AboutUs",
                         contentDescription = "Icono para AboutUs",
-                        onClick = {onAboutUs()},
+                        onClick = { onAboutUs() },
                         isVisible = true,
                     ),
-
                 )
             )
         )
     }
 
-
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
+    Column(modifier = modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { viewModel.onSearchQueryChange(it) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            label = { Text("Buscar planeta") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+            singleLine = true
+        )
 
-    when (val currentState = state) {
-
-        is PlanetListState.Loading -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+            when (val currentState = state) {
+                is PlanetListState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                is PlanetListState.Empty -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No hay planetas disponibles. ¡Añade uno!")
+                    }
+                }
+                is PlanetListState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Error: ${currentState.message}",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                is PlanetListState.Success -> {
+                    PlanetListContent(
+                        modifier = Modifier.fillMaxSize(),
+                        list = currentState.planets,
+                        events = PlanetListEvents(
+                            onDelete = { planet -> viewModel.deletePlanet(planet) },
+                            onAdd = onAddPlanet,
+                            onEdit = onEditPlanet,
+                            onShowMessage = onShowSnackbar
+                        )
+                    )
+                }
             }
-        }
-
-        is PlanetListState.NoData -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No hay planetas disponibles. ¡Añade uno!")
-            }
-        }
-
-        is PlanetListState.Error -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-
-                Text(
-                    text = "Error: ${currentState.message}",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-
-        is PlanetListState.Success -> {
-            PlanetListContent(
-                modifier = modifier,
-                list = currentState.planets,
-                events = PlanetListEvents(
-                    onDelete = { planet -> viewModel.deletePlanet(planet) },
-                    onAdd = onAddPlanet,
-                    onEdit = onEditPlanet,
-                    onShowMessage = onShowSnackbar
-                )
-            )
         }
     }
 }
 
-/**
- * Contenido de la lista
- */
 @Composable
 fun PlanetListContent(
     modifier: Modifier = Modifier,
@@ -169,7 +161,6 @@ fun PlanetListContent(
         }
     }
 
-    // Lógica del AlertDialog
     if (planetToDelete != null) {
         AlertDialog(
             onDismissRequest = { planetToDelete = null },
@@ -204,7 +195,6 @@ fun PlanetListContent(
 )
 @Composable
 fun PlanetListScreenAdvancedPreview() {
-
     val planetasEjemplo = listOf(
         Planet(
             name = "Tatooine", rotationPeriod = "23", orbitalPeriod = "304",
@@ -224,7 +214,6 @@ fun PlanetListScreenAdvancedPreview() {
     )
 
     PlanetStarWarsTheme {
-
         PlanetListContent(
             modifier = Modifier.fillMaxSize(),
             list = planetasEjemplo,

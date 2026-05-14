@@ -4,20 +4,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.dam.planetstarwars.data.model.Film
 import com.dam.planetstarwars.data.model.repository.FilmRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed class FilmScreenEvents {
-    data class ShowMessage(val message: String) : FilmScreenEvents()
-    object NavigateBack : FilmScreenEvents()
-    data class ShowDuplicateDialog(val filmTitle: String) : FilmScreenEvents()
-    data class NotifyCreated(val filmTitle: String) : FilmScreenEvents()
+sealed class FilmSaveResult {
+    object Success : FilmSaveResult()
+    object FieldError : FilmSaveResult()
+    data class Duplicate(val title: String) : FilmSaveResult()
+    data class UnknownError(val message: String) : FilmSaveResult()
 }
 
 @HiltViewModel
@@ -51,9 +47,6 @@ class FilmModificationViewModel @Inject constructor(
 
     val isEditMode: Boolean get() = existingFilm != null
 
-    private val _events = MutableSharedFlow<FilmScreenEvents>()
-    val events: SharedFlow<FilmScreenEvents> = _events
-
     fun onTitleChange(v: String) { title = v; titleError = null }
     fun onEpisodeIdChange(v: String) { episodeId = v; episodeIdError = null }
     fun onDirectorChange(v: String) { director = v; directorError = null }
@@ -71,69 +64,64 @@ class FilmModificationViewModel @Inject constructor(
         }
     }
 
-    fun saveFilm() {
-        viewModelScope.launch {
-            titleError = null
-            episodeIdError = null
-            directorError = null
-            producerError = null
-            releaseDateError = null
+    suspend fun saveFilm(): FilmSaveResult {
+        titleError = null
+        episodeIdError = null
+        directorError = null
+        producerError = null
+        releaseDateError = null
 
-            if (title.isBlank()) {
-                titleError = "El título es obligatorio"
-                return@launch
-            }
-            val epId = episodeId.trim().toIntOrNull()
-            if (epId == null || epId < 1) {
-                episodeIdError = "Debe ser un número mayor que 0"
-                return@launch
-            }
-            if (director.isBlank()) {
-                directorError = "El director es obligatorio"
-                return@launch
-            }
-            if (producer.isBlank()) {
-                producerError = "El productor es obligatorio"
-                return@launch
-            }
-            if (releaseDate.isBlank()) {
-                releaseDateError = "La fecha de estreno es obligatoria"
-                return@launch
-            }
+        if (title.isBlank()) {
+            titleError = "El título es obligatorio"
+            return FilmSaveResult.FieldError
+        }
+        val epId = episodeId.trim().toIntOrNull()
+        if (epId == null || epId < 1) {
+            episodeIdError = "Debe ser un número mayor que 0"
+            return FilmSaveResult.FieldError
+        }
+        if (director.isBlank()) {
+            directorError = "El director es obligatorio"
+            return FilmSaveResult.FieldError
+        }
+        if (producer.isBlank()) {
+            producerError = "El productor es obligatorio"
+            return FilmSaveResult.FieldError
+        }
+        if (releaseDate.isBlank()) {
+            releaseDateError = "La fecha de estreno es obligatoria"
+            return FilmSaveResult.FieldError
+        }
 
-            if (!isEditMode && repository.exists(title.trim())) {
-                _events.emit(FilmScreenEvents.ShowDuplicateDialog(title.trim()))
-                return@launch
-            }
+        if (!isEditMode && repository.exists(title.trim())) {
+            return FilmSaveResult.Duplicate(title.trim())
+        }
 
-            try {
-                if (isEditMode) {
-                    repository.update(
-                        existingFilm!!.copy(
-                            title = title.trim(),
-                            episodeId = epId,
-                            director = director.trim(),
-                            producer = producer.trim(),
-                            releaseDate = releaseDate.trim()
-                        )
+        return try {
+            if (isEditMode) {
+                repository.update(
+                    existingFilm!!.copy(
+                        title = title.trim(),
+                        episodeId = epId,
+                        director = director.trim(),
+                        producer = producer.trim(),
+                        releaseDate = releaseDate.trim()
                     )
-                    _events.emit(FilmScreenEvents.ShowMessage("Película actualizada correctamente"))
-                } else {
-                    repository.insert(
-                        Film(
-                            title = title.trim(),
-                            episodeId = epId,
-                            director = director.trim(),
-                            producer = producer.trim(),
-                            releaseDate = releaseDate.trim()
-                        )
+                )
+            } else {
+                repository.insert(
+                    Film(
+                        title = title.trim(),
+                        episodeId = epId,
+                        director = director.trim(),
+                        producer = producer.trim(),
+                        releaseDate = releaseDate.trim()
                     )
-                    _events.emit(FilmScreenEvents.NotifyCreated(title.trim()))
-                }
-                _events.emit(FilmScreenEvents.NavigateBack)
-            } catch (e: Exception) {
-                _events.emit(FilmScreenEvents.ShowMessage(e.message ?: "Error desconocido"))
+                )
             }
+            FilmSaveResult.Success
+        } catch (e: Exception) {
+            FilmSaveResult.UnknownError(e.message ?: "Error desconocido")
         }
     }
 }

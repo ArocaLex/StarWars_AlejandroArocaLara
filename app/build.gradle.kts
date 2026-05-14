@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kapt)
     alias(libs.plugins.kotlin.parcelize)
-    alias(libs.plugins.room)
+
 }
 
 android {
@@ -41,9 +41,7 @@ android {
     buildFeatures {
         compose = true
     }
-    room{
-        schemaDirectory("$projectDir/schemas")
-    }
+
 }
 
 dependencies {

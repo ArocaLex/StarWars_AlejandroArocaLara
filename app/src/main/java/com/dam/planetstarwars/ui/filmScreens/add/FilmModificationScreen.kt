@@ -24,6 +24,7 @@ import com.dam.planetstarwars.ui.notification.AppPermissions
 import com.dam.planetstarwars.ui.notification.NotificationHandler
 import com.dam.planetstarwars.ui.notification.rememberPermissionsLauncher
 import com.dam.planetstarwars.ui.theme.PlanetStarWarsTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun FilmModificationScreen(
@@ -35,28 +36,43 @@ fun FilmModificationScreen(
 ) {
     val context = LocalContext.current
     val notificationHandler = remember { NotificationHandler(context) }
+    val scope = rememberCoroutineScope()
 
     var showDuplicateDialog by remember { mutableStateOf(false) }
     var duplicateTitle by remember { mutableStateOf("") }
 
     val requestPermissionThenNotify = rememberPermissionsLauncher(
         permissions = listOf(AppPermissions.Notifications),
-        onAllGranted = { notificationHandler.showSimpleNotification("Película creada", "Se ha guardado '${viewModel.title}'") },
-        onDenied = {}
+        onAllGranted = {
+            notificationHandler.showSimpleNotification(
+                "Película creada",
+                "Se ha guardado '${viewModel.title}'"
+            )
+            onBack()
+        },
+        onDenied = {
+            onShowMessage("Permiso de notificaciones denegado, pero se guardó la película.")
+            onBack()
+        }
     )
 
-    LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is FilmScreenEvents.ShowMessage -> onShowMessage(event.message)
-                is FilmScreenEvents.NavigateBack -> onBack()
-                is FilmScreenEvents.ShowDuplicateDialog -> {
-                    duplicateTitle = event.filmTitle
+    val saveAndNotify = {
+        scope.launch {
+            when (val result = viewModel.saveFilm()) {
+                is FilmSaveResult.Success -> {
+                    val msg = if (viewModel.isEditMode) "Película actualizada" else "Película creada"
+                    requestPermissionThenNotify()
+                    if (viewModel.isEditMode) {
+                        onShowMessage(msg)
+                        onBack()
+                    }
+                }
+                is FilmSaveResult.FieldError -> { /* errores mostrados inline */ }
+                is FilmSaveResult.Duplicate -> {
+                    duplicateTitle = result.title
                     showDuplicateDialog = true
                 }
-                is FilmScreenEvents.NotifyCreated -> {
-                    requestPermissionThenNotify()
-                }
+                is FilmSaveResult.UnknownError -> onShowMessage(result.message)
             }
         }
     }
@@ -75,7 +91,7 @@ fun FilmModificationScreen(
                         name = "Guardar",
                         icon = Icons.Default.Check,
                         contentDescription = "Guardar película",
-                        onClick = { viewModel.saveFilm() }
+                        onClick = { saveAndNotify() }
                     )
                 )
             )
@@ -111,7 +127,7 @@ fun FilmModificationScreen(
         onDirectorChange = { viewModel.onDirectorChange(it) },
         onProducerChange = { viewModel.onProducerChange(it) },
         onReleaseDateChange = { viewModel.onReleaseDateChange(it) },
-        onSave = { viewModel.saveFilm() }
+        onSave = { saveAndNotify() }
     )
 }
 
@@ -150,9 +166,7 @@ fun FilmFormContent(
         )
 
         LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
@@ -216,9 +230,7 @@ fun FilmFormContent(
 
         Button(
             onClick = onSave,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             shape = MaterialTheme.shapes.medium
         ) {
             Text(text = if (isEditMode) "Actualizar" else "Guardar")
@@ -226,21 +238,14 @@ fun FilmFormContent(
     }
 }
 
-@Preview(
-    name = "Formulario Película - Claro",
-    showBackground = true,
-    showSystemUi = true
-)
+@Preview(name = "Formulario Película - Claro", showBackground = true, showSystemUi = true)
 @Composable
 private fun FilmFormPreviewLight() {
     PlanetStarWarsTheme {
         FilmFormContent(
-            title = "A New Hope",
-            episodeId = "4",
-            director = "George Lucas",
-            producer = "Gary Kurtz",
-            releaseDate = "1977-05-25",
-            isEditMode = false,
+            title = "A New Hope", episodeId = "4",
+            director = "George Lucas", producer = "Gary Kurtz",
+            releaseDate = "1977-05-25", isEditMode = false,
             onTitleChange = {}, onEpisodeIdChange = {}, onDirectorChange = {},
             onProducerChange = {}, onReleaseDateChange = {}, onSave = {}
         )
@@ -249,24 +254,18 @@ private fun FilmFormPreviewLight() {
 
 @Preview(
     name = "Formulario Película - Con errores",
-    showBackground = true,
-    showSystemUi = true,
+    showBackground = true, showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
 )
 @Composable
 private fun FilmFormPreviewErrors() {
     PlanetStarWarsTheme {
         FilmFormContent(
-            title = "",
-            titleError = "El título es obligatorio",
-            episodeId = "abc",
-            episodeIdError = "Debe ser un número mayor que 0",
-            director = "",
-            directorError = "El director es obligatorio",
-            producer = "",
-            producerError = "El productor es obligatorio",
-            releaseDate = "",
-            releaseDateError = "La fecha de estreno es obligatoria",
+            title = "", titleError = "El título es obligatorio",
+            episodeId = "abc", episodeIdError = "Debe ser un número mayor que 0",
+            director = "", directorError = "El director es obligatorio",
+            producer = "", producerError = "El productor es obligatorio",
+            releaseDate = "", releaseDateError = "La fecha de estreno es obligatoria",
             isEditMode = false,
             onTitleChange = {}, onEpisodeIdChange = {}, onDirectorChange = {},
             onProducerChange = {}, onReleaseDateChange = {}, onSave = {}

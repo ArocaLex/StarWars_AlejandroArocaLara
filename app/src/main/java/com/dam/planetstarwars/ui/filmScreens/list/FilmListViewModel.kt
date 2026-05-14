@@ -14,13 +14,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed class FilmListState {
-    object Loading : FilmListState()
-    object Empty : FilmListState()
-    data class Success(val films: List<Film>) : FilmListState()
-    data class Error(val message: String) : FilmListState()
-}
-
 @HiltViewModel
 class FilmListViewModel @Inject constructor(
     private val repository: FilmRepository
@@ -33,17 +26,10 @@ class FilmListViewModel @Inject constructor(
         repository.getData(),
         _searchQuery
     ) { films, query ->
-        val filteredFilms = if (query.isEmpty()) {
-            films
-        } else {
-            films.filter { it.title.contains(query, ignoreCase = true) }
-        }
-
-        if (filteredFilms.isEmpty()) {
-            FilmListState.Empty
-        } else {
-            FilmListState.Success(filteredFilms)
-        }
+        val filtered = if (query.isEmpty()) films
+                       else films.filter { it.title.contains(query, ignoreCase = true) }
+        if (filtered.isEmpty()) FilmListState.Empty
+        else FilmListState.Success(filtered)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
